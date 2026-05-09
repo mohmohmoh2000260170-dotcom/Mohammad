@@ -1,81 +1,431 @@
+Here is an HTML document that implements a complete Jordan travel guide app with a working map, personal profile page, and all requested features.
+
+```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1a5f4a">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>أردننا - دليل الأردن السياحي</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-<a href="https://www.google.com/maps/dir/?api=1&destination=32.6531,35.6789" target="_blank" class="map-button">
-    فتح الموقع في خرائط جوجل
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS/JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Tajawal', sans-serif;
+        }
         :root {
             --primary: #1a5f4a;
             --primary-dark: #0d3d2e;
             --primary-light: #2d8a6e;
             --secondary: #c9a84c;
-            --secondary-light: #e8d5a3;
-            --accent: #e74c3c;
-            --success: #27ae60;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-            --info: #3498db;
             --bg: #f8f9fa;
             --card: #ffffff;
             --text: #2c3e50;
             --text-light: #7f8c8d;
             --shadow: 0 4px 20px rgba(0,0,0,0.08);
-            --shadow-lg: 0 10px 40px rgba(0,0,0,0.12);
             --radius: 16px;
-            --radius-sm: 12px;
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            font-family: 'Tajawal', sans-serif;
+        body { background: var(--bg); color: var(--text); padding-bottom: 80px; overflow-x: hidden; }
+        .app-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 20px;
+            padding-top: 50px;
+            border-radius: 0 0 30px 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-
-        body {
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-title { color: white; font-size: 24px; font-weight: 800; }
+        .header-icon {
+            background: rgba(255,255,255,0.15);
+            border-radius: 12px;
+            width: 40px; height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            backdrop-filter: blur(8px);
+        }
+        .search-box {
+            background: rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+            backdrop-filter: blur(8px);
+        }
+        .search-box input {
+            background: none;
+            border: none;
+            color: white;
+            width: 100%;
+            outline: none;
+            font-size: 15px;
+        }
+        .search-box input::placeholder { color: rgba(255,255,255,0.7); }
+        .categories-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 20px;
+            scrollbar-width: none;
+        }
+        .categories-scroll::-webkit-scrollbar { display: none; }
+        .category-card {
+            min-width: 100px;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: var(--shadow);
+        }
+        .category-card.active { background: var(--primary); color: white; }
+        .category-card.active .cat-icon { background: rgba(255,255,255,0.2); color: white; }
+        .cat-icon {
+            width: 50px; height: 50px;
             background: var(--bg);
-            color: var(--text);
-            overflow-x: hidden;
-            padding-bottom: 80px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-size: 22px;
+            color: var(--primary);
         }
-
-        /* Splash Screen */
-        #splash {
+        .cat-name { font-size: 13px; font-weight: 700; }
+        .places-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            padding: 20px;
+        }
+        .place-card {
+            background: var(--card);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .place-card:active { transform: scale(0.97); }
+        .place-image { width: 100%; height: 140px; object-fit: cover; }
+        .place-info { padding: 12px; }
+        .place-name { font-weight: 800; }
+        .place-location { font-size: 12px; color: var(--text-light); display: flex; gap: 4px; margin: 4px 0; }
+        .place-price { font-weight: 800; color: var(--primary); margin-top: 6px; font-size: 14px; }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0 20px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            border-radius: 20px 20px 0 0;
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: 0.2s;
+        }
+        .nav-item.active { color: var(--primary); font-weight: 700; }
+        .nav-item i { font-size: 22px; }
+        .add-btn-nav {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 26px;
+            margin-top: -25px;
+            box-shadow: 0 4px 15px rgba(26,95,74,0.4);
+            cursor: pointer;
+        }
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        #map { height: 65vh; width: 100%; border-radius: 20px; margin: 15px auto; z-index: 1; }
+        .map-container { padding: 15px; }
+        .detail-page {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            z-index: 9999;
+            background: var(--bg);
+            z-index: 200;
+            overflow-y: auto;
+            display: none;
+        }
+        .detail-page.active { display: block; }
+        .detail-header { position: relative; height: 300px; }
+        .detail-header img { width: 100%; height: 100%; object-fit: cover; }
+        .detail-header-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            padding-top: 50px;
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+        }
+        .back-btn {
+            background: rgba(0,0,0,0.5);
+            border-radius: 50%;
+            width: 45px; height: 45px;
+            display: flex;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.5s ease;
+            color: white;
+            cursor: pointer;
         }
-
-        #splash.hidden {
+        .detail-content { background: var(--bg); border-radius: 30px 30px 0 0; margin-top: -30px; padding: 25px; }
+        .detail-title { font-size: 26px; font-weight: 800; }
+        .road-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        .road-easy { background: #d4edda; color: #155724; }
+        .road-medium { background: #fff3cd; color: #856404; }
+        .road-hard { background: #f8d7da; color: #721c24; }
+        .profile-card {
+            background: var(--card);
+            margin: 20px;
+            padding: 25px;
+            border-radius: 24px;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            background: var(--primary-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 48px;
+            color: white;
+        }
+        .stats-items {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        .stat-badge { background: var(--bg); padding: 12px; border-radius: 16px; text-align: center; flex: 1; margin: 0 5px; }
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 20px;
+            right: 20px;
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            border-radius: 50px;
+            text-align: center;
+            z-index: 1000;
             opacity: 0;
+            transition: 0.3s;
             pointer-events: none;
         }
+        .toast.show { opacity: 1; bottom: 100px; }
+        .empty-state { text-align: center; padding: 50px; color: var(--text-light); }
+        .direction-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 40px;
+            width: 100%;
+            margin: 10px 0;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        @media (max-width: 480px) {
+            .places-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast -->
+    <div id="toastMessage" class="toast">تمت العملية</div>
 
-        .splash-logo {
-            width: 120px;
-            height: 120px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 30px;
+    <!-- Home Screen -->
+    <div id="homeScreen" class="screen active">
+        <div class="app-header">
+            <div class="header-top">
+                <div class="header-icon" onclick="showProfileTab()"><i class="fas fa-user"></i></div>
+                <div class="header-title">أردننا</div>
+                <div class="header-icon" onclick="showToastMessage('قريباً إشعارات جديدة')"><i class="fas fa-bell"></i></div>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="ابحث عن وجهة..." oninput="filterPlaces()">
+            </div>
+        </div>
+        <div class="categories-scroll" id="categoriesList"></div>
+        <div class="places-grid" id="placesGrid"></div>
+    </div>
+
+    <!-- Map Screen -->
+    <div id="mapScreen" class="screen">
+        <div class="app-header">
+            <div class="header-top">
+                <div></div>
+                <div class="header-title">الخريطة التفاعلية</div>
+                <div></div>
+            </div>
+        </div>
+        <div class="map-container">
+            <div id="map"></div>
+            <div style="padding: 10px; text-align: center; font-size: 13px; color: var(--text-light);">
+                <i class="fas fa-circle" style="color:#27ae60;"></i> سهل &nbsp; <i class="fas fa-circle" style="color:#f39c12;"></i> متوسط &nbsp; <i class="fas fa-circle" style="color:#e74c3c;"></i> صعب
+            </div>
+        </div>
+    </div>
+
+    <!-- Favorites Screen -->
+    <div id="favoritesScreen" class="screen">
+        <div class="app-header">
+            <div class="header-top">
+                <div></div>
+                <div class="header-title">المفضلة ❤️</div>
+                <div></div>
+            </div>
+        </div>
+        <div class="places-grid" id="favoritesGrid"></div>
+    </div>
+
+    <!-- Profile Screen (حسابي) -->
+    <div id="profileScreen" class="screen">
+        <div class="app-header">
+            <div class="header-top">
+                <div></div>
+                <div class="header-title">حسابي الشخصي</div>
+                <div class="header-icon" onclick="editProfile()"><i class="fas fa-edit"></i></div>
+            </div>
+        </div>
+        <div class="profile-card" id="profileCard">
+            <div class="profile-avatar" id="profileAvatar"><i class="fas fa-user-circle"></i></div>
+            <h2 id="profileName">أحمد السفاريني</h2>
+            <p id="profileBio"><i class="fas fa-map-marker-alt"></i> خبير سياحي أردني | مغامر</p>
+            <div class="stats-items">
+                <div class="stat-badge"><i class="fas fa-flag-checkered"></i><br><span id="visitedCount">0</span><br>زار</div>
+                <div class="stat-badge"><i class="fas fa-heart"></i><br><span id="favCountStat">0</span><br>مفضل</div>
+                <div class="stat-badge"><i class="fas fa-camera"></i><br><span>12</span><br>صور</div>
+            </div>
+            <button class="direction-btn" onclick="showToastMessage('تم حفظ الملف الشخصي 🎉')" style="background: var(--secondary); margin-top: 10px;">تحديث الملف</button>
+        </div>
+        <div style="padding: 0 20px;">
+            <div class="section-title" style="font-weight: bold; margin-bottom: 12px;">رحلاتي القادمة</div>
+            <div style="background: white; border-radius: 20px; padding: 20px; text-align: center;">
+                <i class="fas fa-calendar-alt" style="font-size: 40px; color: var(--primary-light);"></i>
+                <p>لا توجد رحلات مجدولة. أضف وجهات من الخريطة!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Page -->
+    <div id="detailPage" class="detail-page">
+        <div class="detail-header">
+            <img id="detailImg" src="">
+            <div class="detail-header-overlay">
+                <div class="back-btn" onclick="closeDetail()"><i class="fas fa-arrow-right"></i></div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="back-btn" id="favDetailBtn" onclick="toggleFavoriteDetail()" style="background: rgba(0,0,0,0.5);"><i class="fas fa-heart"></i></div>
+                    <div class="back-btn" onclick="sharePlace()"><i class="fas fa-share-alt"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="detail-content">
+            <div class="detail-title" id="detailName"></div>
+            <div class="place-location"><i class="fas fa-map-marker-alt"></i> <span id="detailCity"></span></div>
+            <div id="detailRoadBadge" class="road-badge"></div>
+            <div><span id="detailPrice" style="font-size: 20px; font-weight: 800; color: var(--primary);"></span> <span>/شخص</span></div>
+            <p id="detailDesc" style="margin: 15px 0; line-height: 1.6; color: #555;"></p>
+            <div class="direction-btn" id="openMapsBtn" onclick="openGoogleMaps()"><i class="fas fa-directions"></i> فتح الاتجاهات في خرائط جوجل</div>
+            <div style="margin-top: 20px;">
+                <div style="font-weight: bold;"><i class="fas fa-calendar-alt"></i> أفضل وقت للزيارة:</div>
+                <p id="detailBestTime" style="background: #e8f0fe; padding: 10px; border-radius: 16px; margin-top: 8px;"></p>
+            </div>
+            <div style="margin-top: 15px;">
+                <div style="font-weight: bold;"><i class="fas fa-road"></i> تفاصيل الطريق:</div>
+                <p id="detailRoadDesc" style="background: #f0f0f0; padding: 10px; border-radius: 16px; margin-top: 8px;"></p>
+            </div>
+            <button class="direction-btn" style="margin-top: 20px; background: var(--secondary);" onclick="bookTicket()">🎟️ احجز تذكرتك الآن</button>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item" data-tab="home"><i class="fas fa-home"></i><span>الرئيسية</span></div>
+        <div class="nav-item" data-tab="map"><i class="fas fa-map-marked-alt"></i><span>الخريطة</span></div>
+        <div class="add-btn-nav" onclick="openAddPlace()"><i class="fas fa-plus"></i></div>
+        <div class="nav-item" data-tab="favorites"><i class="fas fa-heart"></i><span>المفضلة</span></div>
+        <div class="nav-item" data-tab="profile"><i class="fas fa-user-circle"></i><span>حسابي</span></div>
+    </div>
+
+    <script>
+        // ======================== السياحة الأردنية - بيانات كاملة ========================
+        let places = [
+            { id: 1, name: "البترا", city: "معان", category: "historical", price: 50, rating: 4.9, image: "https://picsum.photos/id/104/400/300", lat: 30.3285, lng: 35.4444, roadDifficulty: "easy", bestTime: "مارس - مايو / سبتمبر - نوفمبر", roadDesc: "طريق معبد بالكامل من عمّان عبر الطريق الصحراوي (3 ساعات). سيارة عادية تكفي." },
+            { id: 2, name: "وادي رم", city: "معان", category: "nature", price: 7, rating: 4.8, image: "https://picsum.photos/id/15/400/300", lat: 29.5753, lng: 35.4211, roadDifficulty: "medium", bestTime: "أكتوبر - أبريل", roadDesc: "طريق ممهد لمركز الزوار لكن داخل الصحراء يحتاج 4x4. ينصح بمرشد." },
+            { id: 3, name: "جرش", city: "جرش", category: "historical", price: 10, rating: 4.7, image: "https://picsum.photos/id/107/400/300", lat: 32.2806, lng: 35.8959, roadDifficulty: "easy", bestTime: "الربيع والخريف", roadDesc: "طريق سريع من عمان 45 دقيقة، سهل جداً." },
+            { id: 4, name: "البحر الميت", city: "غور الصافي", category: "nature", price: 20, rating: 4.6, image: "https://picsum.photos/id/116/400/300", lat: 31.559, lng: 35.4732, roadDifficulty: "easy", bestTime: "مارس - نوفمبر", roadDesc: "طريق معبد ومنحدر رائع، ساعة من عمان." },
+            { id: 5, name: "قلعة عجلون", city: "عجلون", category: "historical", price: 3, rating: 4.5, image: "https://picsum.photos/id/131/400/300", lat: 32.3253, lng: 35.7278, roadDifficulty: "medium", bestTime: "أبريل - أكتوبر", roadDesc: "طريق جبلي متعرج، قيادة حذرة مطلوبة لكن الطريق معبد." },
+            { id: 6, name: "العقبة", city: "العقبة", category: "sea", price: 0, rating: 4.5, image: "https://picsum.photos/id/178/400/300", lat: 29.5267, lng: 35.0078, roadDifficulty: "easy", bestTime: "طوال السنة (شتاء دافئ)", roadDesc: "طريق صحراوي سريع 4 ساعات من عمان." },
+            { id: 7, name: "محمية ضانا", city: "الطفيلة", category: "nature", price: 8, rating: 4.7, image: "https://picsum.photos/id/29/400/300", lat: 30.6756, lng: 35.6103, roadDifficulty: "medium", bestTime: "مارس - مايو", roadDesc: "طريق جبلي منعطفات، ينصح بسيارة دفع رباعي في الشتاء." },
+            { id: 8, name: "وادي الموجب", city: "مادبا", category: "adventure", price: 15, rating: 4.8, image: "https://picsum.photos/id/13/400/300", lat: 31.4403, lng: 35.7931, roadDifficulty: "hard", bestTime: "أبريل - أكتوبر", roadDesc: "طريق وعر في الأسفل، يحتاج سيارة مرتفعة وسباحة". }
+        ];
+
+        let favorites = JSON.parse(localStorage.getItem('jordanFavs')) || [];
+        let currentCategory = "all";
+        let currentPlaceDetail = null;
+        let mapInstance = null;
+        let mapMarkers = [];
+
+        // profile data
+        let profile = { name: "أحمد السفاريني", bio: "خبير سياحي أردني | مغامر", avatar: "avatar" };
+        
+        function saveFavs() { localStorage.setItem('jordanFavs', JSON.stringify(favorites)); }
+        function showToastMessage(msg) { let t = document.getElementById('toastMessage'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+
+        // render home
+        function renderCategories() {
+            const cats = ["all", "historical", "nature", "sea", "adventure"];
+            const names = { all: "الكل", historical: "أثرية", nature: "طبيعية", sea: "بحرية", adventure: "مغامرات" };
+            const container = document.getElementById('categoriesList');
+            container.innerHTML = cats.map(cat => `
+                <div class="category-card ${currentCategory === cat ? 'active' : ''}" onclick="filterByCategory('${cat}')">
+                    <div class="cat-icon"><i class="fas ${cat === 'historical' ? 'fa-landmark' : cat === 'nature' ? 'fa-tree' : cat === 'sea' ? 'fa-water' : cat === 'adventure' ? 'fa-hiking' : 'fa-globe'}"></i></div>
+                    <div class=            border-radius: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
